@@ -1,7 +1,9 @@
-const mongoose = require('mongoose')
-const validator = require('validator')
+const mongoose = require('mongoose');
+const validator = require('validator');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 
-const User = mongoose.model('User', {
+const userSchema = new mongoose.Schema({
     name: {
         type: String,
         required: true,
@@ -9,6 +11,7 @@ const User = mongoose.model('User', {
     },
     email: {
         type: String,
+        unique: true,
         required: true,
         trim: true,
         lowercase: true,
@@ -34,10 +37,58 @@ const User = mongoose.model('User', {
         default: 0,
         validate(value) {
             if (value < 0) {
-                throw new Error('Age must be a postive number')
+                throw new Error('Age must be a positive number')
             }
         }
-    }
+    },
+    tokens: [{
+        token: {
+            type: String,
+            required: true
+        }
+    }]
 })
+
+
+userSchema.methods.toJSON = function(){
+    const user = this;
+    const userObject = user.toObject();
+
+    delete userObject.tokens;
+    delete userObject.password;
+
+    return userObject;
+}
+
+
+userSchema.methods.generateAuthToken = async function(){
+    const user = this;
+    const token = jwt.sign({_id: user._id.toString()}, 'haimyonabrandesdorfer');
+
+    user.tokens = user.tokens.concat({token});
+    await user.save();
+    return token;
+}
+
+
+userSchema.statics.findByCredentials = async (email, password) =>{
+    const user = await User.findOne({ email: email})
+
+    if(!user || !await bcrypt.compare(password, user.password)) {
+        throw new Error('unable to login!');
+    }
+    return user;
+}
+
+
+userSchema.pre('save', async function (next){
+    const user = this;
+    if(user.isModified('password')){
+        user.password = await bcrypt.hash(user.password, 8);
+    }
+    next();
+})
+
+const User = mongoose.model('User', userSchema)
 
 module.exports = User
