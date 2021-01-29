@@ -99,7 +99,7 @@ router.delete('/users/delete', auth, async (req, res) =>{
 const upload = multer({
     limits: 1_000_000,
     fileFilter(req, file, cb){
-        if(!file.originalname.match(/\.(jpg|png)$/)){
+        if(!file.originalname.match(/\.(JPG|png)$/)){
             return cb(new Error('please upload jpg file'))
         }
         return cb(undefined, true)
@@ -108,7 +108,8 @@ const upload = multer({
 
 
 
-router.post('/user/me/avatar', auth,upload.single('avatar'), async (req, res) =>{
+router.post('/user/me/avatar', auth, upload.single('avatar'), async (req, res) =>{
+    console.log('gggg')
     const buffer = await sharp(req.file.buffer).resize({width: 250, height: 250}).png().toBuffer();
     req.user.avatar = buffer;
     await req.user.save();
